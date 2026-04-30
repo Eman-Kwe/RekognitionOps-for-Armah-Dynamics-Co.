@@ -30,3 +30,4 @@ jobs:
           DYNAMODB_TABLE_PROD: ${{ secrets.DYNAMODB_TABLE_PROD }}
           BRANCH: prod                                                    # Tells the script to write results to prod_results table
         run: python scripts/analyze_image.py                              # Uploads image → Rekognition → DynamoDB
+        
