@@ -1,1 +1,1 @@
-# RekognitionOps-for-Armah-Dynamics-Co.
+# RekognitionOps-for-Arm-Dynamics-Co.
