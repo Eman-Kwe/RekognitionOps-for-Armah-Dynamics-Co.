@@ -1,0 +1,32 @@
+name: Analyze Images (Merge - Production)
+# Runs when code is merged (pushed) to main branch
+# Processes images in production environment and stores results in prod_results table
+
+on:
+  push:
+    branches: [main]                                                     # Only triggers when pushing/merging into main
+    paths: ['images/**']                                                 # Only triggers if image files were changed
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest                                              # Runs on a fresh GitHub-hosted Linux machine
+
+    steps:
+      - uses: actions/checkout@v3                                       # Downloads the repo code onto the runner
+
+      - uses: actions/setup-python@v4                                   # Installs Python on the runner
+        with:
+          python-version: '3.9'                                         # Pins to Python 3.9 for consistency
+
+      - run: pip install -r requirements.txt                            # Installs boto3 and other dependencies
+
+      - name: Analyze images (prod)
+        env:
+          # AWS credentials injected securely from GitHub Secrets — Note: Never hardcode these in your codebase!
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          DYNAMODB_TABLE_PROD: ${{ secrets.DYNAMODB_TABLE_PROD }}
+          BRANCH: prod                                                    # Tells the script to write results to prod_results table
+        run: python scripts/analyze_image.py                              # Uploads image → Rekognition → DynamoDB
