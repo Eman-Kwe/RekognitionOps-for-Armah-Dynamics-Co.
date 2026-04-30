@@ -2,6 +2,7 @@ import boto3
 import json
 import os
 from datetime import datetime
+from decimal import Decimal   # Added to fix DynamoDB float error
 from pathlib import Path
 
 # Connect to AWS services using credentials from GitHub Secrets
@@ -23,11 +24,15 @@ def analyze_image_with_rekognition(bucket_name, s3_key):
     # Send image to Rekognition and get back detected labels with confidence scores
     response = rekognition_client.detect_labels(
         Image={'S3Object': {'Bucket': bucket_name, 'Name': s3_key}},
-        MaxLabels=10,                                                   # Return top 10 most confident labels only
-        MinConfidence=70                                                # Only include labels with 70%+ confidence
+        MaxLabels=10,      # Return top 10 most confident labels only
+        MinConfidence=70   # Only include labels with 70%+ confidence
     )
     labels = [
-        {"Name": label['Name'], "Confidence": round(label['Confidence'], 2)}
+        {
+            "Name": label['Name'],
+            "Confidence": Decimal(str(round(label['Confidence'], 2)))
+            # Decimal() fixes DynamoDB error — it does not accept float numbers
+        }
         for label in response['Labels']
     ]
     print(f"✓ Rekognition detected {len(labels)} labels")
@@ -38,14 +43,15 @@ def write_results_to_dynamodb(table_name, filename, labels, branch):
     # Save analysis results to DynamoDB with timestamp and branch tag
     table = dynamodb.Table(table_name)
     item = {
-        'filename':  filename,                                          # S3 path — used as the unique record ID
-        'labels':    labels,                                            # AI-detected labels from Rekognition
-        'timestamp': datetime.utcnow().isoformat() + 'Z',               # When analysis ran
-        'branch':    branch                                             # beta (PR) or prod (merge)
+        'filename':  filename,                              # S3 path — used as the unique record ID
+        'labels':    labels,                               # AI-detected labels from Rekognition
+        'timestamp': datetime.utcnow().isoformat() + 'Z', # When analysis ran
+        'branch':    branch                                # beta (PR) or prod (merge)
     }
     table.put_item(Item=item)
     print(f"✓ Results written to DynamoDB table: {table_name}")
-    print(json.dumps(item, indent=2))
+    print(json.dumps(item, indent=2, default=str))
+    # default=str handles Decimal printing in the log output
 
 
 def main():
