@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-latest                                              # Runs on a fresh GitHub-hosted Linux machine
 
     steps:
-      - uses: actions/checkout@v3                                       # Downloads the repo code onto the runner
+      - uses: actions/checkout@v4                                      # Downloads the repo code onto the runner
 
-      - uses: actions/setup-python@v4                                   # Installs Python on the runner
+      - uses: actions/setup-python@v5                                  # Installs Python on the runner
         with:
           python-version: '3.9'                                         # Pins to Python 3.9 for consistency
 
