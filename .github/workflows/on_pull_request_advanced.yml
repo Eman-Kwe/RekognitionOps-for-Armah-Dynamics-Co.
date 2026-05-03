@@ -1,0 +1,57 @@
+name: Upload Image to S3 - Beta (Advanced Phase)
+# Phase 2 workflow — uploads image to S3 beta prefix only
+# S3 automatically triggers the beta Lambda when the image arrives
+# Lambda handles all Rekognition analysis and DynamoDB storage
+
+on:
+  pull_request:
+    branches: [main]        # Only triggers on PRs targeting main
+    paths: ['images/**']    # Only triggers if image files changed
+
+jobs:
+  upload-to-s3-beta:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        # Downloads repo code onto the runner
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+        # Sets up AWS CLI with credentials from GitHub Secrets
+        # All subsequent aws commands will use these credentials
+
+      - name: Upload images to S3 beta prefix
+        run: |
+          for image in images/*.jpg images/*.png; do
+            if [ -f "$image" ]; then
+              filename=$(basename "$image")
+              aws s3 cp "$image" "s3://${{ secrets.S3_BUCKET }}/rekognition-input/beta/$filename"
+              echo "✓ Uploaded $filename to beta prefix"
+              echo "  S3 will now automatically trigger the beta Lambda"
+            fi
+          done
+        # Loops through every image in the images/ folder
+        # Uploads each one to rekognition-input/beta/ in S3
+        # S3 event notification then triggers the beta Lambda automatically
+
+      - name: Wait for Lambda to process
+        run: |
+          echo "Waiting 15 seconds for Lambda to process..."
+          sleep 15
+        # Gives Lambda enough time to run before we check DynamoDB
+        # Lambda needs a few seconds to start, call Rekognition, and write to DynamoDB
+
+      - name: Verify results in DynamoDB
+        run: |
+          echo "Checking beta_results table..."
+          aws dynamodb scan \
+            --table-name ${{ secrets.DYNAMODB_TABLE_BETA }} \
+            --region ${{ secrets.AWS_REGION }} \
+            --max-items 3
+        # Queries DynamoDB to confirm Lambda successfully wrote the results
+        # If the record is there we know the full pipeline worked end to end
