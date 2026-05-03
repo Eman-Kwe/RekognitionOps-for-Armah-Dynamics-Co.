@@ -1,0 +1,51 @@
+name: Upload Image to S3 - Production (Advanced Phase)
+# Phase 2 workflow — uploads image to S3 prod prefix only
+# S3 automatically triggers the prod Lambda when the image arrives
+# Lambda handles all Rekognition analysis and DynamoDB storage
+
+on:
+  push:
+    branches: [main]        # Only triggers when merging into main
+    paths: ['images/**']    # Only triggers if image files changed
+
+jobs:
+  upload-to-s3-prod:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload images to S3 prod prefix
+        run: |
+          for image in images/*.jpg images/*.png; do
+            if [ -f "$image" ]; then
+              filename=$(basename "$image")
+              aws s3 cp "$image" "s3://${{ secrets.S3_BUCKET }}/rekognition-input/prod/$filename"
+              echo "✓ Uploaded $filename to prod prefix"
+              echo "  S3 will now automatically trigger the prod Lambda"
+            fi
+          done
+        # KEY DIFFERENCE FROM BETA:
+        # Uploads to rekognition-input/prod/ instead of beta/
+        # This triggers the prod Lambda and writes to prod_results table
+
+      - name: Wait for Lambda to process
+        run: |
+          echo "Waiting 15 seconds for Lambda to process..."
+          sleep 15
+
+      - name: Verify results in DynamoDB
+        run: |
+          echo "Checking prod_results table..."
+          aws dynamodb scan \
+            --table-name ${{ secrets.DYNAMODB_TABLE_PROD }} \
+            --region ${{ secrets.AWS_REGION }} \
+            --max-items 3
+            
