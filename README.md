@@ -22,8 +22,8 @@ This project is built in three progressive phases. Each phase builds on the prev
 | Phase | Status | Description |
 |---|---|---|
 | **Phase 1 — Foundational** | ✅ Complete | Python scripts run directly in GitHub Actions |
-| **Phase 2 — Advanced** | 🔄 In Progress | Lambda functions triggered by S3 events |
-| **Phase 3 — Complex** | 🔜 Coming Soon | Full Infrastructure-as-Code with CloudFormation and Terraform |
+| **Phase 2 — Advanced** | ✅ Complete  |Lambda functions triggered by S3 events |
+| **Phase 3 — Complex** | 🔄 In Progress | Full Infrastructure-as-Code with CloudFormation and Terraform |
 
 ---
 
